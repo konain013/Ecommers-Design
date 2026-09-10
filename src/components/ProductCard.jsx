@@ -1,42 +1,39 @@
 import React from "react";
 import { Link } from "react-router-dom";
 
-const ProductCard = ({ products }) => {
+const ProductCard = ({ product }) => {
   return (
     <div className="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 d-flex justify-content-center">
-      
-      {/* Main Framework Card */}
       <div className="custom-store-card mt-4">
-        
-        {/* Gray Image Container Box */}
         <div className="custom-img-box">
           <img
-            src={products?.image}
-            alt={products?.title}
+            src={product?.image}
+            alt={product?.title}
             className="custom-product-img"
+            loading="lazy"
           />
         </div>
 
-        {/* Card Content Data */}
         <div className="custom-card-body">
-          
-          {/* Strictly 2 Lines Title */}
-          <h5 className="custom-card-title" title={products?.title}>
-            {products?.title}
+          <h5
+            className="custom-card-title"
+            title={product?.title}
+          >
+            {product?.title}
           </h5>
 
-          {/* Price Block */}
           <p className="custom-card-price">
-            ${products?.price}
+            ${Number(product?.price || 0).toFixed(2)}
           </p>
-          
-          {/* Button Block */}
+
           <div className="custom-btn-wrapper">
-            <Link to={`/products/${products?.id}`} className="custom-btn-primary">
-              Add to cart
+            <Link
+              to={`/products/${product?.id}`}
+              className="custom-btn-primary"
+            >
+              View Product
             </Link>
           </div>
-
         </div>
       </div>
     </div>

@@ -1,155 +1,184 @@
-import axios from "axios";
-import React, { useEffect, useState } from "react";
-import HeroCarousel from "../components/HeroCarousal";
+
+import React, { useEffect, useMemo, useState } from "react";
+import HeroCarousal from "../components/HeroCarousal";
 import ProductCard from "../components/ProductCard";
 
-
 const Home = () => {
-  // saare products store karne k liye
   const [products, setProducts] = useState([]);
-
-  // loading state
-  const [loading, setLoading] = useState(true);
-
-  // search input state
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
+  const [sort, setSort] = useState("default");
 
-  // selected category filter
-  const [selectedCategory, setSelectedCategory] = useState("all");
-
-  // sort option: "" | "price-asc" | "price-desc"
-  const [sortBy, setSortBy] = useState("");
-
-  // ========================
-  // PRODUCTS FETCH
-  // ========================
-  const fetchProducts = async () => {
-    try {
-      const res = await axios.get("https://fakestoreapi.com/products");
-      setProducts(res.data);
-    } catch (error) {
-      console.log("Error fetching products:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await fetch(
+          "https://fakestoreapi.com/products"
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch products.");
+        }
+
+        const data = await response.json();
+        setProducts(data);
+      } catch (error) {
+        console.error(error);
+        setError("Unable to load products. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchProducts();
   }, []);
 
-  // ========================
-  // UNIQUE CATEGORIES NIKALO
-  // ========================
-  const categories = ["all", ...new Set(products.map((p) => p.category))];
+  const categories = useMemo(() => {
+    return ["all", ...new Set(products.map((product) => product.category))];
+  }, [products]);
 
-  // ========================
-  // FILTER + SEARCH + SORT
-  // ========================
-  const filteredProducts = products
-    .filter((p) => {
-      // category filter
-      const categoryMatch =
-        selectedCategory === "all" || p.category === selectedCategory;
-      // search filter (title mein dhundo)
-      const searchMatch = p.title
-        .toLowerCase()
-        .includes(search.toLowerCase());
-      return categoryMatch && searchMatch;
-    })
-    .sort((a, b) => {
-      // price ke hisab se sort karo
-      if (sortBy === "price-asc") return a.price - b.price;
-      if (sortBy === "price-desc") return b.price - a.price;
-      return 0; // default — koi sort nahi
+  const filteredProducts = useMemo(() => {
+    const searchTerm = search.trim().toLowerCase();
+
+    let result = products.filter((product) => {
+      const matchesSearch =
+        !searchTerm ||
+        product.title.toLowerCase().includes(searchTerm) ||
+        product.description.toLowerCase().includes(searchTerm);
+
+      const matchesCategory =
+        category === "all" || product.category === category;
+
+      return matchesSearch && matchesCategory;
     });
 
+    if (sort === "price-low") {
+      result = [...result].sort((a, b) => a.price - b.price);
+    }
+
+    if (sort === "price-high") {
+      result = [...result].sort((a, b) => b.price - a.price);
+    }
+
+    if (sort === "rating") {
+      result = [...result].sort(
+        (a, b) => b.rating.rate - a.rating.rate
+      );
+    }
+
+    return result;
+  }, [products, search, category, sort]);
+
   return (
-    <div className="container my-5">
-<HeroCarousel/>
-      {/* Page Heading */}
-      <h2 className="fw-bold mb-1">All Products</h2>
-      <p className="text-muted mb-4">
-        {filteredProducts.length} products found
-      </p>
+    <>
+      <HeroCarousal />
 
-      {/* ======================== */}
-      {/* SEARCH + FILTER + SORT   */}
-      {/* ======================== */}
-      <div className="row g-3 mb-4">
+      <section className="container py-5">
+        <div className="text-center mb-5">
+          <h2 className="fw-bold">Our Products</h2>
 
-        {/* Search Input */}
-        <div className="col-md-5">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="🔍 Search products..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <p className="text-muted">
+            Find the products you are looking for.
+          </p>
         </div>
 
-        {/* Category Dropdown */}
-        <div className="col-md-4">
-          <select
-            className="form-select"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat === "all" ? "All Categories" : cat}
-              </option>
+        <div className="row g-3 mb-4">
+          <div className="col-lg-6">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Search products..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+
+          <div className="col-md-6 col-lg-3">
+            <select
+              className="form-select"
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+            >
+              {categories.map((item) => (
+                <option key={item} value={item}>
+                  {item === "all" ? "All Categories" : item}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="col-md-6 col-lg-3">
+            <select
+              className="form-select"
+              value={sort}
+              onChange={(event) => setSort(event.target.value)}
+            >
+              <option value="default">Sort By</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+              <option value="rating">Highest Rated</option>
+            </select>
+          </div>
+        </div>
+
+        {loading && (
+          <div className="text-center py-5">
+            <div className="spinner-border" role="status">
+              <span className="visually-hidden">
+                Loading...
+              </span>
+            </div>
+
+            <p className="text-muted mt-3">
+              Loading products...
+            </p>
+          </div>
+        )}
+
+        {!loading && error && (
+          <div className="text-center py-5">
+            <h4 className="fw-bold mb-3">
+              Something went wrong
+            </h4>
+
+            <p className="text-muted">
+              {error}
+            </p>
+          </div>
+        )}
+
+        {!loading && !error && filteredProducts.length === 0 && (
+          <div className="text-center py-5">
+            <h4 className="fw-bold">
+              No products found
+            </h4>
+
+            <p className="text-muted">
+              Try changing your search or category.
+            </p>
+          </div>
+        )}
+
+        {!loading && !error && filteredProducts.length > 0 && (
+          <div className="row">
+            {filteredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+              />
             ))}
-          </select>
-        </div>
-
-        {/* Sort Dropdown */}
-        <div className="col-md-3">
-          <select
-            className="form-select"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-          >
-            <option value="">Sort By</option>
-            <option value="price-asc">Price: Low → High</option>
-            <option value="price-desc">Price: High → Low</option>
-          </select>
-        </div>
-
-      </div>
-
-      {/* ======================== */}
-      {/* LOADING SPINNER           */}
-      {/* ======================== */}
-      {loading && (
-        <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status" />
-          <p className="mt-2 text-muted">Loading products...</p>
-        </div>
-      )}
-
-      {/* ======================== */}
-      {/* NO RESULTS MESSAGE        */}
-      {/* ======================== */}
-      {!loading && filteredProducts.length === 0 && (
-        <div className="text-center py-5">
-          <h4>😕 No products found</h4>
-          <p className="text-muted">Try a different search or category</p>
-        </div>
-      )}
-
-      {/* ======================== */}
-      {/* PRODUCTS GRID             */}
-      {/* ======================== */}
-      <div className="row ">
-        {filteredProducts.map((product) => (
-          <ProductCard key={product.id} products={product} />
-        ))}
-      </div>
-
-    </div>
+          </div>
+        )}
+      </section>
+    </>
   );
 };
 
 export default Home;
+
